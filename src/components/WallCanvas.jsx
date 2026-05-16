@@ -7,22 +7,24 @@ function HoldPolygon({ hold, status, onTap }) {
     return (
       <polygon
         points={points}
-        fill="white"
+        fill="var(--bg)"
         stroke="none"
       />
     )
   }
 
   const fill = {
-    selected:  "rgba(224, 0, 0, 0.5)",
-    candidate: "rgba(255, 153, 0, 0.5)",
-    none:      "none",
+    selected:        "rgba(224, 0, 0, 0.5)",
+    candidate:       "rgba(255, 153, 0, 0.5)",
+    "masked-selected": "none",
+    none:            "none",
   }[status]
 
   const stroke = {
-    selected:  "#e00",
-    candidate: "#f90",
-    none:      "rgba(0,0,0,0.4)",
+    selected:        "#e00",
+    candidate:       "#f90",
+    "masked-selected": "var(--fg)",
+    none:            "rgba(0,0,0,0.4)",
   }[status]
 
   return (
@@ -57,7 +59,7 @@ export default function WallCanvas({
     if (masked && maskedIds && !maskedIds.includes(id)) {
       return "hidden"
     }
-    if (masked) { return "none" }
+    if (masked) { return "masked-selected" }
     if (selectedIds.includes(id)) { return "selected" }
     if (id === candidateId) { return "candidate" }
     return "none"
@@ -99,7 +101,7 @@ export default function WallCanvas({
             <rect
               x="0" y="0"
               width="1" height="1"
-              fill="white"
+              fill="var(--bg)"
               mask="url(#hold-mask)"
             />
           )}

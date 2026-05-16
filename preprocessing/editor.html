@@ -42,6 +42,7 @@ canvas {
   <button onclick="save()">export json</button>
   <button onclick="deleteSelected()">delete hold</button>
   <button id="drawBtn" onclick="toggleDraw()">new hold</button>
+  <button id="maskBtn" onclick="toggleMask()">mask</button>
   <span id="info">load wall.jpg + holds.json</span>
 </div>
 <canvas id="c"></canvas>
@@ -63,6 +64,7 @@ let panStart  = { x: 0, y: 0 }
 let panOff    = { x: 0, y: 0 }
 let drawing   = false
 let drawPts   = []
+let masked    = false
 
 const VERT_R = 5
 
@@ -161,6 +163,24 @@ function draw() {
           VERT_R * 2
         )
       }
+    }
+  }
+
+  if (masked && img) {
+    ctx.fillStyle = "white"
+    ctx.fillRect(pan.x, pan.y, img.width * scale, img.height * scale)
+    for (const h of holds) {
+      ctx.save()
+      ctx.beginPath()
+      for (let i = 0; i < h.polygon.length; i++) {
+        const p = toScreen(h.polygon[i][0], h.polygon[i][1])
+        if (i === 0) { ctx.moveTo(p.x, p.y) }
+        else         { ctx.lineTo(p.x, p.y) }
+      }
+      ctx.closePath()
+      ctx.clip()
+      ctx.drawImage(img, pan.x, pan.y, img.width * scale, img.height * scale)
+      ctx.restore()
     }
   }
 
@@ -379,6 +399,12 @@ function finishDraw() {
   info.textContent = holds.length + " holds"
 }
 
+function toggleMask() {
+  masked = !masked
+  document.getElementById("maskBtn").textContent = masked ? "unmask" : "mask"
+  draw()
+}
+
 function cancelDraw() {
   drawing  = false
   drawPts  = []
@@ -398,6 +424,10 @@ document.onkeydown = (e) => {
   }
   if (e.key === "n") {
     toggleDraw()
+    return
+  }
+  if (e.key === "m") {
+    toggleMask()
     return
   }
   if (e.key === "Backspace" || e.key === "Delete") {

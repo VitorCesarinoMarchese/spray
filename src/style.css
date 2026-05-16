@@ -8,6 +8,35 @@
   --font: "Courier New", Courier, monospace;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #222;
+    --fg: #ddd;
+    --red: #f44;
+    --yellow: #fb0;
+    --gray: #999;
+    --border: #333;
+  }
+}
+
+[data-theme="dark"] {
+  --bg: #222;
+  --fg: #ddd;
+  --red: #f44;
+  --yellow: #fb0;
+  --gray: #999;
+  --border: #333;
+}
+
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--gray);
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -79,7 +108,29 @@ input:focus, textarea:focus, select:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-bottom: 1px solid var(--border);
   margin: 16px 0px;
+  padding-bottom: 16px;
+}
+
+.header-left {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.logo {
+  font-size: 18px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-decoration: none;
+}
+
+.header-left a:not(.logo) {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .header h1,
@@ -91,6 +142,9 @@ input:focus, textarea:focus, select:focus {
   display: flex;
   gap: 16px;
   align-items: center;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .header-links button {
@@ -117,21 +171,6 @@ input:focus, textarea:focus, select:focus {
   margin-top: 4px;
 }
 
-.nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--border);
-  margin: 16px 0px;
-  padding-bottom: 16px;
-}
-
-.nav a {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
 .route-list {
   list-style: none;
 }
@@ -142,8 +181,10 @@ input:focus, textarea:focus, select:focus {
 }
 
 .route-list li a {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr 75px 60px 55px;
+  gap: 12px;
+  align-items: baseline;
 }
 
 .grade {
@@ -183,9 +224,19 @@ input:focus, textarea:focus, select:focus {
   flex: 1;
 }
 
+.ranking-list {
+  list-style: none;
+}
+
+.ranking-list li {
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+}
+
 .ascent-list {
   list-style: none;
   margin-top: 8px;
+  min-height: 48px;
 }
 
 .ascent-list li {

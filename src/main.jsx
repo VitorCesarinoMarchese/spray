@@ -11,6 +11,11 @@ import Profile from "./pages/Profile"
 import Rankings from "./pages/Rankings"
 import "./style.css"
 
+const savedTheme = localStorage.getItem("spray-theme")
+if (savedTheme && savedTheme !== "system") {
+  document.documentElement.setAttribute("data-theme", savedTheme)
+}
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
 

@@ -1,11 +1,32 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
 import { supabase } from "../lib/supabase"
-import { useAuth } from "../components/AuthContext"
+import Header from "../components/Header"
+
+const THEME_KEY = "spray-theme"
+const THEMES = ["system", "light", "dark"]
+const THEME_LABELS = { system: "◑", light: "☀", dark: "☾" }
+
+function applyTheme(theme) {
+  if (theme === "system") {
+    document.documentElement.removeAttribute("data-theme")
+  } else {
+    document.documentElement.setAttribute("data-theme", theme)
+  }
+}
 
 export default function Walls() {
-  const { user, signOut } = useAuth()
   const [walls, setWalls] = useState(null)
+  const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "system")
+
+  useEffect(() => {
+    applyTheme(theme)
+    localStorage.setItem(THEME_KEY, theme)
+  }, [theme])
+
+  function cycleTheme() {
+    setTheme(t => THEMES[(THEMES.indexOf(t) + 1) % THEMES.length])
+  }
 
   useEffect(() => {
     supabase
@@ -16,19 +37,7 @@ export default function Walls() {
 
   return (
     <div className="page">
-      <div className="header">
-        <h1>V4ão</h1>
-        <div className="header-links">
-          <Link to="/rankings">rankings</Link>
-          {user
-            ? <>
-                <Link to="/profile">profile</Link>
-                <button onClick={signOut}>log out</button>
-              </>
-            : <Link to="/login">log in</Link>
-          }
-        </div>
-      </div>
+      <Header />
 
       {walls === null && <p>loading...</p>}
       {walls?.length === 0 && <p>No walls found.</p>}
@@ -41,8 +50,9 @@ export default function Walls() {
         ))}
       </ul>
 
-      <p style={{ marginTop: 32, fontSize: 11, color: "var(--gray)" }}>
+      <p style={{ marginTop: 32, fontSize: 11, color: "var(--gray)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <a href="https://github.com/tobyshooters/spray">github</a>
+        <button className="theme-toggle" onClick={cycleTheme}>{THEME_LABELS[theme]} {theme}</button>
       </p>
     </div>
   )

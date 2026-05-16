@@ -8,8 +8,8 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       manifest: {
-        name: "Spray",
-        short_name: "Spray",
+        name: "V4ão",
+        short_name: "V4ão",
         description: "Spray wall route setter",
         display: "standalone",
         background_color: "#000000",

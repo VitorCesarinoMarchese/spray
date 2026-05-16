@@ -3,6 +3,9 @@ import { useParams, useNavigate } from "react-router-dom"
 import { supabase } from "../lib/supabase"
 import { useAuth } from "../components/AuthContext"
 import WallCanvas from "../components/WallCanvas"
+import Header from "../components/Header"
+
+const GRADES = ["V0", "V1", "V2", "V3", "V4inho", "V4ão", "V4asso"]
 
 
 export default function SetRoute() {
@@ -12,9 +15,12 @@ export default function SetRoute() {
   const [wall, setWall]           = useState(null)
   const [holds, setHolds]         = useState([])
   const [selected, setSelected]   = useState([])
-  const [candidate, setCandidate] = useState(null)
   const [name, setName]           = useState("")
   const [grade, setGrade]         = useState(null)
+  const [match, setMatch]         = useState(false)
+  const [volumes, setVolumes]     = useState("any")
+  const [campus, setCampus]       = useState(false)
+  const [masked, setMasked]       = useState(false)
   const [saving, setSaving]       = useState(false)
 
   useEffect(() => {
@@ -41,16 +47,9 @@ export default function SetRoute() {
   function handleHoldTap(holdId) {
     if (selected.includes(holdId)) {
       setSelected(selected.filter((id) => id !== holdId))
-      return
-    }
-
-    if (candidate === holdId) {
+    } else {
       setSelected([...selected, holdId])
-      setCandidate(null)
-      return
     }
-
-    setCandidate(holdId)
   }
 
   async function handleSave() {
@@ -64,6 +63,9 @@ export default function SetRoute() {
       grade:     grade,
       setter_id: user.id,
       hold_ids:  selected,
+      match:     match,
+      volumes:   volumes,
+      campus:    campus,
     })
 
     setSaving(false)
@@ -77,22 +79,31 @@ export default function SetRoute() {
 
   return (
     <div className="page">
-      <h1>set route</h1>
+      <Header back={{ to: `/walls/${id}`, label: "wall" }} />
 
       {imageUrl && (
-        <WallCanvas
-          imageUrl={imageUrl}
-          holds={holds}
-          selectedIds={selected}
-          candidateId={candidate}
-          onHoldTap={handleHoldTap}
-        />
+        <>
+          <WallCanvas
+            imageUrl={imageUrl}
+            holds={holds}
+            selectedIds={selected}
+            masked={masked}
+            maskedIds={selected}
+            onHoldTap={masked ? undefined : handleHoldTap}
+          />
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+            <p style={{ fontSize: 11 }}>
+              {selected.length} holds selected
+            </p>
+            <button
+              onClick={() => setMasked(!masked)}
+              style={{ fontSize: 11, padding: "4px 8px" }}
+            >
+              {masked ? "edit holds" : "preview route"}
+            </button>
+          </div>
+        </>
       )}
-
-      <p style={{ margin: "8px 0px", fontSize: 11 }}>
-        {selected.length} holds selected
-        {candidate && " — tap again to confirm"}
-      </p>
 
       <div className="field">
         <label>route name</label>
@@ -112,12 +123,35 @@ export default function SetRoute() {
           }}
         >
           <option value="">--</option>
-          <option value="0">V0</option>
-          <option value="1">V1</option>
-          <option value="2">V2</option>
-          <option value="3">V3</option>
-          <option value="4">V4</option>
+          {GRADES.map((label, i) => (
+            <option key={i} value={i}>{label}</option>
+          ))}
         </select>
+      </div>
+
+      <div className="field">
+        <label>match</label>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, textTransform: "none", letterSpacing: 0, color: "var(--fg)" }}>
+          <input type="checkbox" checked={match} onChange={(e) => setMatch(e.target.checked)} style={{ width: "auto" }} />
+          two hands on a hold allowed
+        </label>
+      </div>
+
+      <div className="field">
+        <label>volumes</label>
+        <select value={volumes} onChange={(e) => setVolumes(e.target.value)}>
+          <option value="any">any</option>
+          <option value="holds only">holds only</option>
+          <option value="none">none</option>
+        </select>
+      </div>
+
+      <div className="field">
+        <label>campus</label>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, textTransform: "none", letterSpacing: 0, color: "var(--fg)" }}>
+          <input type="checkbox" checked={campus} onChange={(e) => setCampus(e.target.checked)} style={{ width: "auto" }} />
+          no feet allowed
+        </label>
       </div>
 
       <div className="actions">

@@ -3,10 +3,13 @@ import { useParams, Link } from "react-router-dom"
 import { supabase } from "../lib/supabase"
 import { useAuth } from "../components/AuthContext"
 import WallCanvas from "../components/WallCanvas"
+import Header from "../components/Header"
+
+const GRADES = ["V0", "V1", "V2", "V3", "V4inho", "V4ão", "V4asso"]
 
 function gradeLabel(n) {
   if (n == null) { return "?" }
-  return "V" + n
+  return GRADES[n] || "V?"
 }
 
 
@@ -100,16 +103,21 @@ export default function RouteDetail() {
 
   return (
     <div className="page">
-      <nav className="nav">
-        <Link to={`/walls/${route.wall_id}`}>&larr; wall</Link>
-      </nav>
+      <Header back={{ to: `/walls/${route.wall_id}`, label: "wall" }} />
 
       <p style={{paddingBottom: "11px"}}>
         <b style={{paddingRight: "11px", textTransform: "capitalize"}}>
           {route.name}
         </b>
+      </p>
+      <p style={{paddingBottom: "11px"}}>
         <span className="grade">{gradeLabel(route.grade)}</span>
         {setter && <span> by {setter}</span>}
+      </p>
+      <p style={{ paddingBottom: "11px", fontSize: 12, color: "var(--gray)" }}>
+        {route.match && <span>match · </span>}
+        {route.campus && <span>campus · </span>}
+        <span>volumes: {route.volumes || "any"}</span>
       </p>
 
       {imageUrl && (
@@ -130,7 +138,7 @@ export default function RouteDetail() {
         </>
       )}
 
-      <h2 style={{ marginTop: 16 }}>
+      <h2 style={{ marginTop: 32 }}>
         ascents {ascents && `(${ascents.length})`}
       </h2>
 
@@ -191,11 +199,9 @@ export default function RouteDetail() {
               }}
             >
               <option value="">--</option>
-              <option value="0">V0</option>
-              <option value="1">V1</option>
-              <option value="2">V2</option>
-              <option value="3">V3</option>
-              <option value="4">V4</option>
+              {GRADES.map((label, i) => (
+                <option key={i} value={i}>{label}</option>
+              ))}
             </select>
           </div>
 

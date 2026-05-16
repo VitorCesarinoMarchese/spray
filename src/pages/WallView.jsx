@@ -3,10 +3,13 @@ import { useParams, Link } from "react-router-dom"
 import { supabase } from "../lib/supabase"
 import { useAuth } from "../components/AuthContext"
 import WallCanvas from "../components/WallCanvas"
+import Header from "../components/Header"
+
+const GRADES = ["V0", "V1", "V2", "V3", "V4inho", "V4ão", "V4asso"]
 
 function gradeLabel(n) {
   if (n == null) { return "?" }
-  return "V" + n
+  return GRADES[n] || "V?"
 }
 
 
@@ -16,6 +19,8 @@ export default function WallView() {
   const [wall, setWall]         = useState(null)
   const [holds, setHolds]       = useState([])
   const [routes, setRoutes]     = useState(null)
+  const [sort, setSort]         = useState("date")
+  const [asc, setAsc]           = useState(true)
   const [masked, setMasked]     = useState(false)
 
   useEffect(() => {
@@ -50,9 +55,7 @@ export default function WallView() {
 
   return (
     <div className="page">
-      <nav className="nav">
-        <Link to="/walls">&larr; walls</Link>
-      </nav>
+      <Header back={{ to: "/walls", label: "walls" }} />
 
       <h1>{wall?.name || "wall"}</h1>
 
@@ -72,13 +75,28 @@ export default function WallView() {
         </>
       )}
 
-      <div className="header" style={{ marginTop: 16 }}>
+      <div className="header" style={{ marginTop: 32 }}>
         <h2>routes</h2>
-        {user && (
-          <Link to={`/walls/${id}/set`} className="header-links">
-            + set route
-          </Link>
-        )}
+        <div className="header-links">
+          <button
+            className="theme-toggle"
+            onClick={() => {
+              if (sort === "date") { setSort("grade"); setAsc(false) }
+              else { setSort("date"); setAsc(false) }
+            }}
+          >
+            sort: {sort}
+          </button>
+          <button
+            className="theme-toggle"
+            onClick={() => setAsc(a => !a)}
+          >
+            {asc ? "↑" : "↓"}
+          </button>
+          {user && (
+            <Link to={`/walls/${id}/set`}>+ set route</Link>
+          )}
+        </div>
       </div>
 
       {routes === null
@@ -86,7 +104,11 @@ export default function WallView() {
         : routes.length === 0
           ? <p>no routes yet.</p>
           : <ul className="route-list">
-              {routes.map((r) => (
+              {[...routes].sort((a, b) => {
+                const dir = asc ? 1 : -1
+                if (sort === "grade") return dir * ((a.grade ?? -1) - (b.grade ?? -1))
+                return dir * (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0)
+              }).map((r) => (
                 <li key={r.id}>
                   <Link to={`/routes/${r.id}`}>
                     <span>
@@ -97,14 +119,14 @@ export default function WallView() {
                         </span>
                       )}
                     </span>
-                    <span>
-                      {r.ascents?.[0]?.count > 0 && (
-                        <span style={{ color: "var(--gray)", fontSize: 12 }}>
-                          {r.ascents[0].count} sends{" "}
-                        </span>
-                      )}
-                      <span className="grade">{gradeLabel(r.grade)}</span>
+
+                    <span style={{ color: "var(--gray)", fontSize: 12, textAlign: "right" }}>
+                      {r.created_at?.slice(0, 10)}
                     </span>
+                    <span style={{ color: "var(--gray)", fontSize: 12, textAlign: "right" }}>
+                      {r.ascents?.[0]?.count > 0 ? `${r.ascents[0].count} sends` : ""}
+                    </span>
+                    <span className="grade" style={{ textAlign: "right" }}>{gradeLabel(r.grade)}</span>
                   </Link>
                 </li>
               ))}

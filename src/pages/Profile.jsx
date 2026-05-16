@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
 import { supabase } from "../lib/supabase"
 import { useAuth } from "../components/AuthContext"
+import Header from "../components/Header"
 
 export default function Profile() {
   const { user }                = useAuth()
@@ -51,9 +51,7 @@ export default function Profile() {
 
   return (
     <div className="page">
-      <nav className="nav">
-        <Link to="/walls">&larr; walls</Link>
-      </nav>
+      <Header back={{ to: "/walls", label: "walls" }} />
 
       <h1>profile</h1>
 

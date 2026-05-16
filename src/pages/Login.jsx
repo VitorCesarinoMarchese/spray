@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "../lib/supabase"
+import Header from "../components/Header"
 
 export default function Login() {
   const [email, setEmail]       = useState("")
@@ -28,7 +29,7 @@ export default function Login() {
 
   return (
     <div className="page">
-      <h1>spray</h1>
+      <Header />
 
       <form onSubmit={handleSubmit}>
         <div className="field">
