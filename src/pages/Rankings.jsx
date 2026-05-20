@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { supabase } from "../lib/supabase"
 import Header from "../components/Header"
 
-const GRADES = ["V0", "V1", "V2", "V3", "V4inho", "V4ão", "V4asso"]
+const GRADES = ["V0", "V1", "V2", "V3", "V4inho", "V4", "V4ão", "V4asso"]
 
 export default function Rankings() {
   const [rankings, setRankings] = useState(null)
@@ -52,12 +52,12 @@ export default function Rankings() {
 
   return (
     <div className="page">
-      <Header back={{ to: "/walls", label: "walls" }} />
+      <Header back={{ to: "/walls", label: "muros" }} />
 
       <h1>rankings</h1>
 
       {rankings === null && <p>loading...</p>}
-      {rankings?.length === 0 && <p>no ascents yet.</p>}
+      {rankings?.length === 0 && <p>sem sends.</p>}
 
       <ul className="ranking-list">
         {(rankings || []).map((r, i) => (

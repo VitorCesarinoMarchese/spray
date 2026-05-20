@@ -69,8 +69,8 @@ let masked    = false
 const VERT_R = 5
 
 Promise.all([
-  loadImage("wall.jpg"),
-  fetch("holds.json").then(r => r.json()),
+  loadImage("/cp2/nova.png"),
+  fetch("/cp2/holds_v3.json").then(r => r.json()),
 ]).then(([image, data]) => {
   img   = image
   holds = data

@@ -5,7 +5,7 @@ import { useAuth } from "../components/AuthContext"
 import WallCanvas from "../components/WallCanvas"
 import Header from "../components/Header"
 
-const GRADES = ["V0", "V1", "V2", "V3", "V4inho", "V4ão", "V4asso"]
+const GRADES = ["V0", "V1", "V2", "V3", "V4inho", "V4", "V4ão", "V4asso"]
 
 function gradeLabel(n) {
   if (n == null) { return "?" }
@@ -23,6 +23,7 @@ export default function RouteDetail() {
   const [ascents, setAscents]   = useState(null)
   const [stars, setStars]       = useState(3)
   const [sugGrade, setSugGrade] = useState(null)
+  const [attempts, setAttempts] = useState(1)
   const [notes, setNotes]       = useState("")
   const [saving, setSaving]     = useState(false)
   const [masked, setMasked]     = useState(false)
@@ -86,10 +87,12 @@ export default function RouteDetail() {
       climber_id:     user.id,
       stars:          stars,
       suggested_grade: sugGrade,
+      attempts:       attempts,
       notes:          notes || null,
       date:           new Date().toISOString().split("T")[0],
     })
 
+    setAttempts(1)
     setNotes("")
     setSaving(false)
     loadAscents()
@@ -100,46 +103,52 @@ export default function RouteDetail() {
   }
 
   const imageUrl = wall?.image_url || ""
+  const thumbUrl = wall?.image_thumb_url || ""
 
   return (
     <div className="page">
-      <Header back={{ to: `/walls/${route.wall_id}`, label: "wall" }} />
+      <Header back={{ to: `/walls/${route.wall_id}`, label: "muro" }} />
 
-      <p style={{paddingBottom: 12}}>
-        <b style={{paddingRight: 12, textTransform: "capitalize"}}>
-          {route.name}
-        </b>
-      </p>
-      <p style={{paddingBottom: 12}}>
-        <span className="grade">{gradeLabel(route.grade)}</span>
-        {setter && <span> by {setter}</span>}
-      </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 12 }}>
+        <div>
+          <b style={{paddingRight: 12, textTransform: "capitalize"}}>
+            {route.name}
+          </b>
+          <span className="grade">{gradeLabel(route.grade)}</span>
+          {setter && <span> por {setter}</span>}
+        </div>
+        {user && user.id === route.setter_id && (
+          <Link to={`/routes/${id}/edit`} style={{ fontSize: 12 }}>editar</Link>
+        )}
+      </div>
       <p style={{ paddingBottom: 12, fontSize: 12, color: "var(--gray)" }}>
         {route.match && <span>match · </span>}
         {route.campus && <span>campus · </span>}
-        <span>volumes: {route.volumes || "any"}</span>
+        <span>volumes: {route.volumes === "any" ? "qualquer" : route.volumes === "holds only" ? "só das agarras" : route.volumes || "qualquer"}</span>
       </p>
 
       {imageUrl && (
         <>
           <WallCanvas
             imageUrl={imageUrl}
+            thumbUrl={thumbUrl}
             holds={holds}
-            selectedIds={route.hold_ids || []}
+            selectedIds={Object.keys(route.holds_map || {})}
+            holdsMap={route.holds_map || {}}
             masked={masked}
-            maskedIds={route.hold_ids || []}
+            maskedIds={Object.keys(route.holds_map || {})}
           />
           <button
             onClick={() => setMasked(!masked)}
             style={{ marginTop: 8, fontSize: 11, padding: "4px 8px" }}
           >
-            {masked ? "show wall" : "show holds only"}
+            {masked ? "ver muro" : "só agarras"}
           </button>
         </>
       )}
 
       <h2 style={{ marginTop: 32 }}>
-        ascents {ascents && `(${ascents.length})`}
+        sends {ascents && `(${ascents.length})`}
       </h2>
 
       {ascents === null && <p>loading...</p>}
@@ -155,6 +164,7 @@ export default function RouteDetail() {
             {a.suggested_grade != null && (
               <span> — {gradeLabel(a.suggested_grade)}</span>
             )}
+            {a.attempts != null && <span> — {a.attempts === 1 ? "⚡" : `${a.attempts} tentativas`}</span>}
             {a.notes && <span> — {a.notes}</span>}
           </li>
         ))}
@@ -162,10 +172,10 @@ export default function RouteDetail() {
 
       {user && (
         <>
-          <h2 style={{ marginTop: 16 }}>log ascent</h2>
+          <h2 style={{ marginTop: 16 }}>log send</h2>
 
           <div className="field">
-            <label>stars</label>
+            <label>estrelas</label>
             <div style={{ display: "flex", gap: 4 }}>
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
@@ -190,7 +200,7 @@ export default function RouteDetail() {
           </div>
 
           <div className="field">
-            <label>suggested grade</label>
+            <label>grade sugerido</label>
             <select
               value={sugGrade ?? ""}
               onChange={(e) => {
@@ -206,7 +216,18 @@ export default function RouteDetail() {
           </div>
 
           <div className="field">
-            <label>notes (optional)</label>
+            <label>tentativas</label>
+            <input
+              type="number"
+              min={1}
+              value={attempts}
+              onChange={(e) => setAttempts(Math.max(1, parseInt(e.target.value) || 1))}
+              style={{ width: 80 }}
+            />
+          </div>
+
+          <div className="field">
+            <label>notas (opcional)</label>
             <textarea
               rows={2}
               value={notes}
@@ -218,7 +239,7 @@ export default function RouteDetail() {
             onClick={logAscent}
             disabled={saving}
           >
-            {saving ? "logging..." : "log send"}
+            {saving ? "guardando..." : "log send"}
           </button>
         </>
       )}

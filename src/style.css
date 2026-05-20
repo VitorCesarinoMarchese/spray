@@ -41,6 +41,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  touch-action: manipulation;
 }
 
 html, body, #root {
@@ -152,6 +153,17 @@ input:focus, textarea:focus, select:focus {
   padding: 4px 16px;
 }
 
+a.btn {
+  display: inline-block;
+  background: var(--fg);
+  color: var(--bg);
+  padding: 6px 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-decoration: none;
+}
+
 .field {
   margin-bottom: 12px;
 }
@@ -201,7 +213,8 @@ input:focus, textarea:focus, select:focus {
 }
 
 .wall-canvas-container.interactive {
-  touch-action: none;
+  overflow: hidden;
+  touch-action: manipulation;
 }
 
 .wall-canvas {

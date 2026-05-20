@@ -51,30 +51,30 @@ export default function Profile() {
 
   return (
     <div className="page">
-      <Header back={{ to: "/walls", label: "walls" }} />
+      <Header back={{ to: "/walls", label: "muros" }} />
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <span style={{ fontSize: 12, color: "var(--gray)" }}>{user.email}</span>
-        <button onClick={signOut} style={{ fontSize: 11, padding: "4px 16px" }}>log out</button>
+        <button onClick={signOut} style={{ fontSize: 11, padding: "4px 16px" }}>sair</button>
       </div>
 
       <form onSubmit={handleSave}>
         <label className="field" style={{ display: "block", marginBottom: 4 }}>
-          Display name
+          Nome
         </label>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            placeholder="display name"
+            placeholder="nome"
           />
           <button type="submit" disabled={saving} style={{ whiteSpace: "nowrap" }}>
-            {saving ? "saving..." : "save"}
+            {saving ? "guardando..." : "guardar"}
           </button>
         </div>
         {saved && (
-          <span style={{ fontSize: 12 }}>saved</span>
+          <span style={{ fontSize: 12 }}>guardado</span>
         )}
       </form>
 

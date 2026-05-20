@@ -43,6 +43,9 @@ createRoot(document.getElementById("root")).render(
             <ProtectedRoute><SetRoute /></ProtectedRoute>
           } />
           <Route path="/routes/:id" element={<RouteDetail />} />
+          <Route path="/routes/:id/edit" element={
+            <ProtectedRoute><SetRoute /></ProtectedRoute>
+          } />
           <Route path="/rankings" element={<Rankings />} />
 
           <Route path="/profile" element={

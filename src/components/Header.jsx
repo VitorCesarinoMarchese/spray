@@ -15,8 +15,8 @@ export default function Header({ back }) {
       <div className="header-links">
         <Link to="/rankings">rankings</Link>
         {user
-          ? <Link to="/profile">profile</Link>
-          : <Link to="/login">log in</Link>
+          ? <Link to="/profile">perfil</Link>
+          : <Link to="/login">entrar</Link>
         }
       </div>
     </div>

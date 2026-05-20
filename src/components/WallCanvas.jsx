@@ -1,6 +1,15 @@
-function HoldPolygon({ hold, status, onTap }) {
+import { useState } from "react"
+
+const HOLD_COLORS = {
+  hand:   { fill: "rgba(0, 120, 255, 0.7)",  stroke: "#0080FF" },
+  start:  { fill: "rgba(0, 255, 65, 0.7)",   stroke: "#00FF41" },
+  finish: { fill: "rgba(224, 0, 0, 0.7)",   stroke: "#e00" },
+  feet:   { fill: "rgba(255, 200, 0, 0.7)", stroke: "#fc0" },
+}
+
+function HoldPolygon({ hold, status, holdType, onTap, interactive }) {
   const points = hold.polygon
-    .map(([x, y]) => `${x},${y}`)
+    .map(([x, y]) => `${x * 1000},${y * 1000}`)
     .join(" ")
 
   if (status === "hidden") {
@@ -13,24 +22,30 @@ function HoldPolygon({ hold, status, onTap }) {
     )
   }
 
-  const fill = {
-    selected:        "rgba(224, 0, 0, 0.5)",
-    candidate:       "rgba(255, 153, 0, 0.5)",
-    "masked-selected": "none",
-    none:            "none",
-  }[status]
+  let fill, stroke
 
-  const stroke = {
-    selected:        "#e00",
-    candidate:       "#f90",
-    "masked-selected": "var(--fg)",
-    none:            "rgba(0,0,0,0.4)",
-  }[status]
+  if (status === "selected") {
+    const colors = HOLD_COLORS[holdType || "hand"]
+    fill = colors.fill
+    stroke = colors.stroke
+  } else if (status === "masked-selected") {
+    fill = "none"
+    if (holdType) {
+      const colors = HOLD_COLORS[holdType] || HOLD_COLORS.hand
+      stroke = colors.stroke
+    } else {
+      stroke = "var(--fg)"
+    }
+  } else if (interactive) {
+    fill = "none"
+    stroke = "rgba(0,0,0,0.4)"
+  } else {
+    return null
+  }
 
   return (
     <g
-      onPointerDown={(e) => {
-        e.stopPropagation()
+      onClick={() => {
         onTap?.(hold.id)
       }}
       style={{ cursor: onTap ? "pointer" : "default" }}
@@ -39,7 +54,7 @@ function HoldPolygon({ hold, status, onTap }) {
         points={points}
         fill={fill}
         stroke={stroke}
-        strokeWidth={0.002}
+        strokeWidth={status === "masked-selected" && holdType ? 6 : status === "selected" ? 4 : 2}
         pointerEvents="all"
       />
     </g>
@@ -48,29 +63,76 @@ function HoldPolygon({ hold, status, onTap }) {
 
 export default function WallCanvas({
   imageUrl,
+  thumbUrl,
   holds,
   selectedIds = [],
-  candidateId = null,
+  holdsMap = {},
   onHoldTap,
   masked = false,
   maskedIds = null,
 }) {
+  const [thumbLoaded, setThumbLoaded] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+
   function holdStatus(id) {
     if (masked && maskedIds && !maskedIds.includes(id)) {
       return "hidden"
     }
     if (masked) { return "masked-selected" }
     if (selectedIds.includes(id)) { return "selected" }
-    if (id === candidateId) { return "candidate" }
     return "none"
   }
 
+  const HOLD_TYPE_LABELS = { hand: "mão", start: "saída", finish: "top", feet: "pé" }
+  const HOLD_TYPE_NAMES = ["hand", "start", "finish", "feet"]
+  const hasHolds = selectedIds.length > 0
+
+  const sortedHolds = [...holds].sort((a, b) => {
+    const area = (poly) => {
+      let s = 0
+      for (let i = 0; i < poly.length; i++) {
+        const [x1, y1] = poly[i]
+        const [x2, y2] = poly[(i + 1) % poly.length]
+        s += x1 * y2 - x2 * y1
+      }
+      return Math.abs(s)
+    }
+    return area(b.polygon) - area(a.polygon)
+  })
+
   return (
-    <div className={onHoldTap ? "wall-canvas-container interactive" : "wall-canvas-container"}>
+    <div
+      className={onHoldTap ? "wall-canvas-container interactive" : "wall-canvas-container"}
+    >
+      {(
+        <div style={{ display: "flex", gap: 12, marginBottom: 6, fontSize: 11, visibility: (onHoldTap || hasHolds) ? "visible" : "hidden" }}>
+          {HOLD_TYPE_NAMES.map((type) => (
+            <span key={type} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{
+                display: "inline-block", width: 10, height: 10, borderRadius: 2,
+                background: HOLD_COLORS[type].fill, border: `1px solid ${HOLD_COLORS[type].stroke}`,
+              }} />
+              {HOLD_TYPE_LABELS[type]}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="wall-canvas">
-        <img src={imageUrl} alt="spray wall" />
+        <img
+          src={loaded || !thumbUrl ? imageUrl : thumbUrl}
+          alt="spray wall"
+          onLoad={!thumbLoaded && thumbUrl ? () => setThumbLoaded(true) : undefined}
+        />
+        {thumbLoaded && !loaded && (
+          <img
+            src={imageUrl}
+            alt=""
+            onLoad={() => setLoaded(true)}
+            style={{ display: "none" }}
+          />
+        )}
         <svg
-          viewBox="0 0 1 1"
+          viewBox="0 0 1000 1000"
           preserveAspectRatio="none"
           style={{ background: "none" }}
         >
@@ -79,7 +141,7 @@ export default function WallCanvas({
               <mask id="hold-mask">
                 <rect
                   x="0" y="0"
-                  width="1" height="1"
+                  width="1000" height="1000"
                   fill="white"
                 />
                 {holds
@@ -88,7 +150,7 @@ export default function WallCanvas({
                     <polygon
                       key={h.id}
                       points={h.polygon
-                        .map(([x, y]) => `${x},${y}`)
+                        .map(([x, y]) => `${x * 1000},${y * 1000}`)
                         .join(" ")}
                       fill="black"
                     />
@@ -100,18 +162,37 @@ export default function WallCanvas({
           {masked && (
             <rect
               x="0" y="0"
-              width="1" height="1"
+              width="1000" height="1000"
               fill="var(--bg)"
               mask="url(#hold-mask)"
             />
           )}
 
-          {holds.map((h) => (
+          {sortedHolds.filter((h) => !selectedIds.includes(h.id)).map((h) => (
             <HoldPolygon
               key={h.id}
               hold={h}
               status={holdStatus(h.id)}
+              holdType={holdsMap[h.id]}
               onTap={onHoldTap}
+              interactive={!!onHoldTap}
+            />
+          ))}
+
+          <rect
+            x="0" y="0" width="1" height="1"
+            fill={hasHolds ? "rgba(255,255,255,0.5)" : "none"}
+            pointerEvents="none"
+          />
+
+          {sortedHolds.filter((h) => selectedIds.includes(h.id)).map((h) => (
+            <HoldPolygon
+              key={h.id}
+              hold={h}
+              status={holdStatus(h.id)}
+              holdType={holdsMap[h.id]}
+              onTap={onHoldTap}
+              interactive={!!onHoldTap}
             />
           ))}
         </svg>
@@ -119,3 +200,5 @@ export default function WallCanvas({
     </div>
   )
 }
+
+export { HOLD_COLORS }

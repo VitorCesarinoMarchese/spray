@@ -33,7 +33,7 @@ export default function Login() {
 
       <form onSubmit={handleSubmit}>
         <div className="field">
-          <label>email</label>
+          <label>e-mail</label>
           <input
             type="email"
             value={email}
@@ -43,7 +43,7 @@ export default function Login() {
         </div>
 
         <div className="field">
-          <label>password</label>
+          <label>senha</label>
           <input
             type="password"
             value={password}
@@ -56,7 +56,7 @@ export default function Login() {
 
         <div className="actions">
           <button type="submit">
-            {isSignUp ? "sign up" : "log in"}
+            {isSignUp ? "criar conta" : "entrar"}
           </button>
         </div>
       </form>
@@ -70,8 +70,8 @@ export default function Login() {
           }}
         >
           {isSignUp
-            ? "already have an account? log in"
-            : "need an account? sign up"}
+            ? "já tens conta? entrar"
+            : "criar conta"}
         </a>
       </p>
     </div>

@@ -5,7 +5,7 @@ import { useAuth } from "../components/AuthContext"
 import WallCanvas from "../components/WallCanvas"
 import Header from "../components/Header"
 
-const GRADES = ["V0", "V1", "V2", "V3", "V4inho", "V4ão", "V4asso"]
+const GRADES = ["V0", "V1", "V2", "V3", "V4inho", "V4", "V4ão", "V4asso"]
 
 function gradeLabel(n) {
   if (n == null) { return "?" }
@@ -21,7 +21,7 @@ export default function WallView() {
   const [routes, setRoutes]     = useState(null)
   const [sort, setSort]         = useState("date")
   const [asc, setAsc]           = useState(true)
-  const [masked, setMasked]     = useState(false)
+  const [masked, setMasked]     = useState(true)
 
   useEffect(() => {
     supabase
@@ -52,17 +52,19 @@ export default function WallView() {
   }, [wall])
 
   const imageUrl = wall?.image_url || ""
+  const thumbUrl = wall?.image_thumb_url || ""
 
   return (
     <div className="page">
-      <Header back={{ to: "/walls", label: "walls" }} />
+      <Header back={{ to: "/walls", label: "muros" }} />
 
-      <h1>{wall?.name || "wall"}</h1>
+      <h1>{wall?.name || "muro"}</h1>
 
       {imageUrl && (
         <>
           <WallCanvas
             imageUrl={imageUrl}
+            thumbUrl={thumbUrl}
             holds={holds}
             masked={masked}
           />
@@ -70,13 +72,20 @@ export default function WallView() {
             onClick={() => setMasked(!masked)}
             style={{ marginTop: 8, fontSize: 11, padding: "4px 8px" }}
           >
-            {masked ? "show wall" : "show holds only"}
+            {masked ? "ver muro" : "só agarras"}
           </button>
         </>
       )}
 
       <div className="header" style={{ marginTop: 32 }}>
-        <h2>routes</h2>
+        <div className="header-links">
+          <h2>vias</h2>
+          {user && (
+            <Link to={`/walls/${id}/set`} className="btn" style={{marginLeft: "6px"}}>
+              + abrir via
+            </Link>
+          )}
+        </div>
         <div className="header-links">
           <button
             className="theme-toggle"
@@ -93,16 +102,13 @@ export default function WallView() {
           >
             {asc ? "↑" : "↓"}
           </button>
-          {user && (
-            <Link to={`/walls/${id}/set`}>+ set route</Link>
-          )}
         </div>
       </div>
 
       {routes === null
         ? <p>loading...</p>
         : routes.length === 0
-          ? <p>no routes yet.</p>
+          ? <p>sem vias.</p>
           : <ul className="route-list">
               {[...routes].sort((a, b) => {
                 const dir = asc ? 1 : -1
@@ -115,7 +121,7 @@ export default function WallView() {
                       {r.name}
                       {r.profiles?.display_name && (
                         <span style={{ color: "var(--gray)", fontSize: 12 }}>
-                          {" "}by {r.profiles.display_name}
+                          {" "}por {r.profiles.display_name}
                         </span>
                       )}
                     </span>

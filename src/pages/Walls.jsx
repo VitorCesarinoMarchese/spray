@@ -31,7 +31,8 @@ export default function Walls() {
   useEffect(() => {
     supabase
       .from("walls")
-      .select("id, name")
+      .select("id, name, created_at")
+      .order("created_at", { ascending: false })
       .then(({ data }) => setWalls(data || []))
   }, [])
 
@@ -40,12 +41,15 @@ export default function Walls() {
       <Header />
 
       {walls === null && <p>loading...</p>}
-      {walls?.length === 0 && <p>No walls found.</p>}
+      {walls?.length === 0 && <p>Sem muros.</p>}
 
       <ul className="wall-list">
         {(walls || []).map((w) => (
           <li key={w.id}>
-            <Link to={`/walls/${w.id}`}>{w.name}</Link>
+            <Link to={`/walls/${w.id}`} style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>{w.name}</span>
+              <span style={{ color: "var(--gray)", fontSize: 12 }}>{w.created_at?.slice(0, 10)}</span>
+            </Link>
           </li>
         ))}
       </ul>

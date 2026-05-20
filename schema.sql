@@ -1,8 +1,10 @@
 create table walls (
-  id         bigint generated always as identity primary key,
-  name       text not null,
-  image_url  text not null,
-  holds_json_url text
+  id             bigint generated always as identity primary key,
+  name           text not null,
+  image_url      text not null,
+  image_thumb_url text,
+  holds_json_url text,
+  created_at     timestamptz default now()
 );
 
 create table routes (
@@ -10,19 +12,23 @@ create table routes (
   wall_id    bigint not null references walls(id),
   name       text not null,
   setter_id  uuid not null references profiles(id),
-  hold_ids   text[] not null,
-  grade      smallint check (grade between 0 and 4),
+  holds_map  jsonb not null default '{}',
+  grade      smallint,
+  match      boolean default false,
+  volumes    text default 'any',
+  campus     boolean default false,
   created_at timestamptz default now()
 );
 
 create table ascents (
-  id         bigint generated always as identity primary key,
-  route_id   bigint not null references routes(id),
-  climber_id uuid not null references profiles(id),
-  stars      smallint check (stars between 1 and 5),
-  suggested_grade smallint check (suggested_grade between 0 and 4),
-  notes      text,
-  date       date default current_date
+  id              bigint generated always as identity primary key,
+  route_id        bigint not null references routes(id) on delete cascade,
+  climber_id      uuid not null references profiles(id),
+  stars           smallint check (stars between 1 and 5),
+  suggested_grade smallint,
+  attempts        smallint default 1,
+  notes           text,
+  date            date default current_date
 );
 
 create table profiles (
@@ -69,6 +75,11 @@ create policy "routes_insert"
   on routes for insert
   to authenticated
   with check (setter_id = auth.uid());
+
+create policy "routes_update"
+  on routes for update
+  to authenticated
+  using (setter_id = auth.uid());
 
 -- ascents: anyone can read, authenticated can insert their own
 create policy "ascents_read"

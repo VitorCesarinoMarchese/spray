@@ -1,20 +1,27 @@
-import { useState, useEffect } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import { useState, useEffect, useRef } from "react"
+import { useParams, useNavigate, useLocation } from "react-router-dom"
 import { supabase } from "../lib/supabase"
 import { useAuth } from "../components/AuthContext"
 import WallCanvas from "../components/WallCanvas"
 import Header from "../components/Header"
 
-const GRADES = ["V0", "V1", "V2", "V3", "V4inho", "V4ão", "V4asso"]
+const HOLD_TYPES = ["hand", "start", "finish", "feet"]
+const HOLD_TYPE_LABELS = { hand: "mão", start: "saída", finish: "top", feet: "pé" }
+
+const GRADES = ["V0", "V1", "V2", "V3", "V4inho", "V4", "V4ão", "V4asso"]
 
 
 export default function SetRoute() {
   const { id }                    = useParams()
   const { user }                  = useAuth()
   const navigate                  = useNavigate()
+  const location                  = useLocation()
+  const isEdit                    = location.pathname.startsWith("/routes/")
+  const [routeId, setRouteId]     = useState(isEdit ? id : null)
+  const [wallId, setWallId]       = useState(isEdit ? null : id)
   const [wall, setWall]           = useState(null)
   const [holds, setHolds]         = useState([])
-  const [selected, setSelected]   = useState([])
+  const [holdsMap, setHoldsMap]    = useState({})
   const [name, setName]           = useState("")
   const [grade, setGrade]         = useState(null)
   const [match, setMatch]         = useState(false)
@@ -24,16 +31,38 @@ export default function SetRoute() {
   const [saving, setSaving]       = useState(false)
 
   useEffect(() => {
+    if (isEdit) {
+      supabase
+        .from("routes")
+        .select("*")
+        .eq("id", id)
+        .single()
+        .then(({ data }) => {
+          if (!data) { return }
+          setRouteId(data.id)
+          setWallId(data.wall_id)
+          setName(data.name)
+          setGrade(data.grade)
+          setHoldsMap(data.holds_map || {})
+          setMatch(data.match || true)
+          setVolumes(data.volumes || "any")
+          setCampus(data.campus || false)
+        })
+    }
+  }, [id, isEdit])
+
+  useEffect(() => {
+    if (!wallId) { return }
     supabase
       .from("walls")
       .select("*")
-      .eq("id", id)
+      .eq("id", wallId)
       .single()
       .then(({ data }) => {
         if (!data) { return }
         setWall(data)
       })
-  }, [id])
+  }, [wallId])
 
   useEffect(() => {
     if (!wall?.holds_json_url) { return }
@@ -44,69 +73,87 @@ export default function SetRoute() {
       .catch(() => {})
   }, [wall])
 
+  const selectedIds = Object.keys(holdsMap)
+  const lastTap = useRef({ id: null, time: 0 })
+
   function handleHoldTap(holdId) {
-    if (selected.includes(holdId)) {
-      setSelected(selected.filter((id) => id !== holdId))
+    const now = Date.now()
+    const isDoubleTap = lastTap.current.id === holdId && now - lastTap.current.time < 400
+    lastTap.current = { id: holdId, time: now }
+
+    const current = holdsMap[holdId]
+    if (!current && !isDoubleTap) return
+
+    if (!current) {
+      setHoldsMap({ ...holdsMap, [holdId]: "hand" })
     } else {
-      setSelected([...selected, holdId])
+      const idx = HOLD_TYPES.indexOf(current)
+      const next = HOLD_TYPES[idx + 1]
+      if (next) {
+        setHoldsMap({ ...holdsMap, [holdId]: next })
+      } else {
+        const { [holdId]: _, ...rest } = holdsMap
+        setHoldsMap(rest)
+      }
     }
   }
 
   async function handleSave() {
-    if (!name || selected.length === 0) { return }
+    if (!name || selectedIds.length === 0) { return }
 
     setSaving(true)
 
-    const { error } = await supabase.from("routes").insert({
-      wall_id:   id,
-      name:      name,
-      grade:     grade,
-      setter_id: user.id,
-      hold_ids:  selected,
-      match:     match,
-      volumes:   volumes,
-      campus:    campus,
-    })
+    const fields = {
+      name, grade, holds_map: holdsMap,
+      match, volumes, campus,
+    }
+
+    const { error } = isEdit
+      ? await supabase.from("routes").update(fields).eq("id", routeId)
+      : await supabase.from("routes").insert({ ...fields, wall_id: wallId, setter_id: user.id })
 
     setSaving(false)
 
     if (!error) {
-      navigate(`/walls/${id}`)
+      navigate(isEdit ? `/routes/${routeId}` : `/walls/${wallId}`)
     }
   }
 
   const imageUrl = wall?.image_url || ""
+  const thumbUrl = wall?.image_thumb_url || ""
 
   return (
     <div className="page">
-      <Header back={{ to: `/walls/${id}`, label: "wall" }} />
+      <Header back={isEdit ? { to: `/routes/${routeId}`, label: "via" } : { to: `/walls/${wallId}`, label: "muro" }} />
 
       {imageUrl && (
         <>
           <WallCanvas
             imageUrl={imageUrl}
+            thumbUrl={thumbUrl}
             holds={holds}
-            selectedIds={selected}
+            selectedIds={selectedIds}
+            holdsMap={holdsMap}
             masked={masked}
-            maskedIds={selected}
+            maskedIds={selectedIds}
             onHoldTap={masked ? undefined : handleHoldTap}
           />
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
             <p style={{ fontSize: 11 }}>
-              {selected.length} holds selected
+              {selectedIds.length} agarras
             </p>
             <button
               onClick={() => setMasked(!masked)}
               style={{ fontSize: 11, padding: "4px 8px" }}
             >
-              {masked ? "edit holds" : "preview route"}
+              {masked ? "editar agarras" : "preview via"}
             </button>
           </div>
         </>
       )}
 
-      <div className="field">
-        <label>route name</label>
+      <div className="field" style={{ marginTop: 24 }}>
+        <label>nome da via</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -132,9 +179,9 @@ export default function SetRoute() {
       <div className="field">
         <label>volumes</label>
         <select value={volumes} onChange={(e) => setVolumes(e.target.value)}>
-          <option value="any">any</option>
-          <option value="holds only">holds only</option>
-          <option value="none">none</option>
+          <option value="any">qualquer</option>
+          <option value="holds only">só das agarras</option>
+          <option value="none">nenhum</option>
         </select>
       </div>
 
@@ -142,7 +189,7 @@ export default function SetRoute() {
         <label>match</label>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, textTransform: "none", letterSpacing: 0, color: "var(--fg)" }}>
           <input type="checkbox" checked={match} onChange={(e) => setMatch(e.target.checked)} style={{ width: "auto" }} />
-          two hands on a hold allowed
+          duas mãos na mesma agarra
         </label>
       </div>
 
@@ -150,19 +197,19 @@ export default function SetRoute() {
         <label>campus</label>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, textTransform: "none", letterSpacing: 0, color: "var(--fg)" }}>
           <input type="checkbox" checked={campus} onChange={(e) => setCampus(e.target.checked)} style={{ width: "auto" }} />
-          no feet allowed
+          sem pés
         </label>
       </div>
 
       <div className="actions">
         <button
           onClick={handleSave}
-          disabled={saving || !name || selected.length === 0}
+          disabled={saving || !name || selectedIds.length === 0}
         >
-          {saving ? "saving..." : "save route"}
+          {saving ? "guardando..." : isEdit ? "atualizar via" : "guardar via"}
         </button>
-        <button onClick={() => navigate(`/walls/${id}`)}>
-          cancel
+        <button onClick={() => navigate(isEdit ? `/routes/${routeId}` : `/walls/${wallId}`)}>
+          cancelar
         </button>
       </div>
     </div>
