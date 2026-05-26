@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react"
 import { useParams, useNavigate, useLocation } from "react-router-dom"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "../lib/supabase"
+import { keys } from "../lib/queries"
 import { useAuth } from "../components/AuthContext"
 import WallCanvas from "../components/WallCanvas"
 import Header from "../components/Header"
@@ -16,11 +18,9 @@ export default function SetRoute() {
   const { user }                  = useAuth()
   const navigate                  = useNavigate()
   const location                  = useLocation()
+  const queryClient               = useQueryClient()
   const isEdit                    = location.pathname.startsWith("/routes/")
-  const [routeId, setRouteId]     = useState(isEdit ? id : null)
   const [wallId, setWallId]       = useState(isEdit ? null : id)
-  const [wall, setWall]           = useState(null)
-  const [holds, setHolds]         = useState([])
   const [holdsMap, setHoldsMap]    = useState({})
   const [name, setName]           = useState("")
   const [grade, setGrade]         = useState(null)
@@ -28,63 +28,66 @@ export default function SetRoute() {
   const [volumes, setVolumes]     = useState("any")
   const [campus, setCampus]       = useState(false)
   const [masked, setMasked]       = useState(false)
-  const [saving, setSaving]       = useState(false)
-  const [hasProfile, setHasProfile] = useState(true)
 
-  useEffect(() => {
-    if (isEdit) {
-      supabase
+  const { data: editRoute } = useQuery({
+    queryKey: keys.route(id),
+    enabled: isEdit,
+    queryFn: async () => {
+      const { data } = await supabase
         .from("routes")
         .select("*")
         .eq("id", id)
         .single()
-        .then(({ data }) => {
-          if (!data) { return }
-          setRouteId(data.id)
-          setWallId(data.wall_id)
-          setName(data.name)
-          setGrade(data.grade)
-          setHoldsMap(data.holds_map || {})
-          setMatch(data.match || true)
-          setVolumes(data.volumes || "any")
-          setCampus(data.campus || false)
-        })
-    }
-  }, [id, isEdit])
+      return data
+    },
+  })
 
   useEffect(() => {
-    if (!user) return
-    supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
-        setHasProfile(!!data?.display_name)
-      })
-  }, [user])
+    if (!editRoute) return
+    setWallId(editRoute.wall_id)
+    setName(editRoute.name)
+    setGrade(editRoute.grade)
+    setHoldsMap(editRoute.holds_map || {})
+    setMatch(editRoute.match || true)
+    setVolumes(editRoute.volumes || "any")
+    setCampus(editRoute.campus || false)
+  }, [editRoute?.id])
 
-  useEffect(() => {
-    if (!wallId) { return }
-    supabase
-      .from("walls")
-      .select("*")
-      .eq("id", wallId)
-      .single()
-      .then(({ data }) => {
-        if (!data) { return }
-        setWall(data)
-      })
-  }, [wallId])
+  const { data: hasProfile = true } = useQuery({
+    queryKey: keys.profile(user?.id),
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", user.id)
+        .single()
+      return !!data?.display_name
+    },
+  })
 
-  useEffect(() => {
-    if (!wall?.holds_json_url) { return }
+  const { data: wall } = useQuery({
+    queryKey: keys.wall(wallId),
+    enabled: !!wallId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("walls")
+        .select("*")
+        .eq("id", wallId)
+        .single()
+      return data
+    },
+  })
 
-    fetch(wall.holds_json_url)
-      .then((r) => r.json())
-      .then(setHolds)
-      .catch(() => {})
-  }, [wall])
+  const { data: holds = [] } = useQuery({
+    queryKey: keys.holds(wall?.holds_json_url),
+    enabled: !!wall?.holds_json_url,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const r = await fetch(wall.holds_json_url)
+      return r.json()
+    },
+  })
 
   const selectedIds = Object.keys(holdsMap)
   const lastTap = useRef({ id: null, time: 0 })
@@ -111,33 +114,37 @@ export default function SetRoute() {
     }
   }
 
-  async function handleSave() {
-    if (!name || selectedIds.length === 0) { return }
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const fields = {
+        name, grade, holds_map: holdsMap,
+        match, volumes, campus,
+      }
 
-    setSaving(true)
-
-    const fields = {
-      name, grade, holds_map: holdsMap,
-      match, volumes, campus,
-    }
-
-    const { error } = isEdit
-      ? await supabase.from("routes").update(fields).eq("id", routeId)
-      : await supabase.from("routes").insert({ ...fields, wall_id: wallId, setter_id: user.id })
-
-    setSaving(false)
-
-    if (!error) {
-      navigate(isEdit ? `/routes/${routeId}` : `/walls/${wallId}`)
-    }
-  }
+      if (isEdit) {
+        return supabase.from("routes").update(fields).eq("id", id)
+      } else {
+        return supabase.from("routes").insert({ ...fields, wall_id: wallId, setter_id: user.id })
+      }
+    },
+    onSuccess: ({ error }) => {
+      if (error) return
+      if (wallId) {
+        queryClient.invalidateQueries({ queryKey: keys.wallRoutes(String(wallId)) })
+      }
+      if (isEdit) {
+        queryClient.invalidateQueries({ queryKey: keys.route(id) })
+      }
+      navigate(isEdit ? `/routes/${id}` : `/walls/${wallId}`)
+    },
+  })
 
   const imageUrl = wall?.image_url || ""
   const thumbUrl = wall?.image_thumb_url || ""
 
   return (
     <div className="page">
-      <Header back={isEdit ? { to: `/routes/${routeId}`, label: "via" } : { to: `/walls/${wallId}`, label: "muro" }} />
+      <Header back={isEdit ? { to: `/routes/${id}`, label: "via" } : { to: `/walls/${wallId}`, label: "muro" }} />
 
       {imageUrl && (
         <>
@@ -223,12 +230,12 @@ export default function SetRoute() {
 
       <div className="actions">
         <button
-          onClick={handleSave}
-          disabled={saving || !name || selectedIds.length === 0 || !hasProfile}
+          onClick={() => saveMutation.mutate()}
+          disabled={saveMutation.isPending || !name || selectedIds.length === 0 || !hasProfile}
         >
-          {saving ? "guardando..." : isEdit ? "atualizar via" : "guardar via"}
+          {saveMutation.isPending ? "guardando..." : isEdit ? "atualizar via" : "guardar via"}
         </button>
-        <button onClick={() => navigate(isEdit ? `/routes/${routeId}` : `/walls/${wallId}`)}>
+        <button onClick={() => navigate(isEdit ? `/routes/${id}` : `/walls/${wallId}`)}>
           cancelar
         </button>
       </div>

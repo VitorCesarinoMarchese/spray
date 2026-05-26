@@ -1,52 +1,59 @@
 import { useState, useEffect } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "../lib/supabase"
+import { keys } from "../lib/queries"
 import { useAuth } from "../components/AuthContext"
 import Header from "../components/Header"
 
 export default function Profile() {
   const { user, signOut }       = useAuth()
+  const queryClient             = useQueryClient()
   const [name, setName]         = useState("")
-  const [saving, setSaving]     = useState(false)
   const [saved, setSaved]       = useState(false)
-  const [isNew, setIsNew]       = useState(false)
+
+  const { data: profile } = useQuery({
+    queryKey: keys.profile(user.id),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", user.id)
+        .single()
+      return data
+    },
+  })
+
+  const isNew = profile !== undefined && !profile
 
   useEffect(() => {
-    supabase
-      .from("profiles")
-      .select("display_name")
-      .eq("id", user.id)
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          setName(data.display_name)
-        } else {
-          setIsNew(true)
-        }
-      })
-  }, [user])
+    if (profile?.display_name) setName(profile.display_name)
+  }, [profile])
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (isNew) {
+        await supabase.from("profiles").insert({
+          id:           user.id,
+          display_name: name.trim(),
+        })
+      } else {
+        await supabase
+          .from("profiles")
+          .update({ display_name: name.trim() })
+          .eq("id", user.id)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: keys.profile(user.id) })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    },
+  })
 
   async function handleSave(e) {
     e.preventDefault()
-    if (!name.trim()) { return }
-
-    setSaving(true)
-
-    if (isNew) {
-      await supabase.from("profiles").insert({
-        id:           user.id,
-        display_name: name.trim(),
-      })
-      setIsNew(false)
-    } else {
-      await supabase
-        .from("profiles")
-        .update({ display_name: name.trim() })
-        .eq("id", user.id)
-    }
-
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    if (!name.trim()) return
+    saveMutation.mutate()
   }
 
   return (
@@ -69,8 +76,8 @@ export default function Profile() {
             required
             placeholder="nome"
           />
-          <button type="submit" disabled={saving} style={{ whiteSpace: "nowrap" }}>
-            {saving ? "guardando..." : "guardar"}
+          <button type="submit" disabled={saveMutation.isPending} style={{ whiteSpace: "nowrap" }}>
+            {saveMutation.isPending ? "guardando..." : "guardar"}
           </button>
         </div>
         {saved && (

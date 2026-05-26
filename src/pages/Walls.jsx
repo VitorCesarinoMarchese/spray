@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
 import { supabase } from "../lib/supabase"
+import { keys } from "../lib/queries"
 import Header from "../components/Header"
 
 const THEME_KEY = "spray-theme"
@@ -16,7 +18,6 @@ function applyTheme(theme) {
 }
 
 export default function Walls() {
-  const [walls, setWalls] = useState(null)
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) || "system")
 
   useEffect(() => {
@@ -28,19 +29,22 @@ export default function Walls() {
     setTheme(t => THEMES[(THEMES.indexOf(t) + 1) % THEMES.length])
   }
 
-  useEffect(() => {
-    supabase
-      .from("walls")
-      .select("id, name, created_at")
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setWalls(data || []))
-  }, [])
+  const { data: walls } = useQuery({
+    queryKey: keys.walls(),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("walls")
+        .select("id, name, created_at")
+        .order("created_at", { ascending: false })
+      return data || []
+    },
+  })
 
   return (
     <div className="page">
       <Header />
 
-      {walls === null && <p>loading...</p>}
+      {!walls && <p>loading...</p>}
       {walls?.length === 0 && <p>Sem muros.</p>}
 
       <ul className="wall-list">

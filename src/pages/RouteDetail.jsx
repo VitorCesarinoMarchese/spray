@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { supabase } from "../lib/supabase"
+import { keys } from "../lib/queries"
 import { useAuth } from "../components/AuthContext"
 import WallCanvas from "../components/WallCanvas"
 import Header from "../components/Header"
@@ -17,67 +19,93 @@ export default function RouteDetail() {
   const { id }                  = useParams()
   const { user }                = useAuth()
   const navigate                = useNavigate()
-  const [route, setRoute]       = useState(null)
-  const [setter, setSetter]     = useState(null)
-  const [wall, setWall]         = useState(null)
-  const [holds, setHolds]       = useState([])
-  const [ascents, setAscents]   = useState(null)
+  const queryClient             = useQueryClient()
   const [stars, setStars]       = useState(3)
   const [sugGrade, setSugGrade] = useState(null)
   const [attempts, setAttempts] = useState(1)
   const [notes, setNotes]       = useState("")
-  const [saving, setSaving]     = useState(false)
   const [masked, setMasked]     = useState(false)
-  const [existingAscent, setExistingAscent] = useState(null)
-  const [siblingIds, setSiblingIds] = useState([])
+
+  const { data: route } = useQuery({
+    queryKey: keys.route(id),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("routes")
+        .select("*")
+        .eq("id", id)
+        .single()
+      return data
+    },
+  })
+
+  const { data: wall } = useQuery({
+    queryKey: keys.wall(route?.wall_id),
+    enabled: !!route?.wall_id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("walls")
+        .select("*")
+        .eq("id", route.wall_id)
+        .single()
+      return data
+    },
+  })
+
+  const { data: setter } = useQuery({
+    queryKey: keys.profile(route?.setter_id),
+    enabled: !!route?.setter_id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("display_name")
+        .eq("id", route.setter_id)
+        .single()
+      return data?.display_name || null
+    },
+  })
+
+  const { data: siblingIds = [] } = useQuery({
+    queryKey: keys.siblings(route?.wall_id),
+    enabled: !!route?.wall_id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("routes")
+        .select("id")
+        .eq("wall_id", route.wall_id)
+        .order("id")
+      return (data || []).map(r => r.id)
+    },
+  })
+
+  const { data: ascents } = useQuery({
+    queryKey: keys.ascents(id),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ascents")
+        .select("*, profiles(display_name)")
+        .eq("route_id", id)
+        .order("date", { ascending: false })
+      return data || []
+    },
+  })
+
+  const { data: holds = [] } = useQuery({
+    queryKey: keys.holds(wall?.holds_json_url),
+    enabled: !!wall?.holds_json_url,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const r = await fetch(wall.holds_json_url)
+      return r.json()
+    },
+  })
+
+  const existingAscent = user && ascents
+    ? ascents.find((a) => a.climber_id === user.id) || null
+    : null
 
   useEffect(() => {
-    supabase
-      .from("routes")
-      .select("*")
-      .eq("id", id)
-      .single()
-      .then(({ data }) => {
-        if (!data) { return }
-        setRoute(data)
-        setSugGrade(data.grade)
-
-        supabase
-          .from("walls")
-          .select("*")
-          .eq("id", data.wall_id)
-          .single()
-          .then((res) => {
-            if (res?.data) { setWall(res.data) }
-          })
-
-        supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("id", data.setter_id)
-          .single()
-          .then((res) => {
-            if (res?.data) { setSetter(res.data.display_name) }
-          })
-
-        supabase
-          .from("routes")
-          .select("id")
-          .eq("wall_id", data.wall_id)
-          .order("id")
-          .then(({ data: rows }) => {
-            if (rows) setSiblingIds(rows.map(r => r.id))
-          })
-      })
-
-    loadAscents()
-  }, [id])
-
-  useEffect(() => {
-    if (!user || !ascents) return
-    const mine = ascents.find((a) => a.climber_id === user.id)
-    setExistingAscent(mine || null)
-  }, [user, ascents])
+    if (route) setSugGrade(route.grade)
+  }, [route?.id])
 
   useEffect(() => {
     if (!existingAscent) return
@@ -87,47 +115,37 @@ export default function RouteDetail() {
     setNotes(existingAscent.notes || "")
   }, [existingAscent?.id])
 
-  useEffect(() => {
-    if (!wall?.holds_json_url) { return }
-
-    fetch(wall.holds_json_url)
-      .then((r) => r.json())
-      .then(setHolds)
-      .catch(() => {})
-  }, [wall])
-
-  function loadAscents() {
-    supabase
-      .from("ascents")
-      .select("*, profiles(display_name)")
-      .eq("route_id", id)
-      .order("date", { ascending: false })
-      .then(({ data }) => setAscents(data || []))
-  }
-
-  async function logAscent() {
-    setSaving(true)
-
-    const payload = {
-      stars:          stars,
-      suggested_grade: sugGrade,
-      attempts:       Math.max(1, parseInt(attempts) || 1),
-      notes:          notes || null,
-    }
-
-    await supabase.from("ascents").upsert({
-      ...payload,
-      route_id:   id,
-      climber_id: user.id,
-      date:       existingAscent?.date || new Date().toISOString().split("T")[0],
-    }, { onConflict: "route_id,climber_id" })
-
-    setSaving(false)
-    loadAscents()
-  }
+  const ascentMutation = useMutation({
+    mutationFn: async () => {
+      const payload = {
+        stars,
+        suggested_grade: sugGrade,
+        attempts: Math.max(1, parseInt(attempts) || 1),
+        notes: notes || null,
+      }
+      await supabase.from("ascents").upsert({
+        ...payload,
+        route_id:   id,
+        climber_id: user.id,
+        date:       existingAscent?.date || new Date().toISOString().split("T")[0],
+      }, { onConflict: "route_id,climber_id" })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: keys.ascents(id) })
+      if (route?.wall_id) {
+        queryClient.invalidateQueries({ queryKey: keys.wallRoutes(String(route.wall_id)) })
+      }
+      queryClient.invalidateQueries({ queryKey: keys.rankings() })
+    },
+  })
 
   if (!route) {
-    return <div className="page"><p>loading...</p></div>
+    return (
+      <div className="page">
+        <Header back={{ to: "/walls", label: "muros" }} />
+        <p>loading...</p>
+      </div>
+    )
   }
 
   const imageUrl = wall?.image_url || ""
@@ -137,11 +155,27 @@ export default function RouteDetail() {
   const prevId = idx >= 0 ? siblingIds[(idx - 1 + siblingIds.length) % siblingIds.length] : null
   const nextId = idx >= 0 ? siblingIds[(idx + 1) % siblingIds.length] : null
 
+  const touchStart = useRef(null)
+  const handleTouchStart = useCallback((e) => {
+    touchStart.current = e.touches[0].clientX
+  }, [])
+  const handleTouchEnd = useCallback((e) => {
+    if (touchStart.current === null) return
+    const dx = e.changedTouches[0].clientX - touchStart.current
+    touchStart.current = null
+    if (Math.abs(dx) < 50) return
+    if (dx > 0 && prevId) navigate(`/routes/${prevId}`)
+    if (dx < 0 && nextId) navigate(`/routes/${nextId}`)
+  }, [prevId, nextId, navigate])
+
   return (
     <div className="page">
       <Header back={{ to: `/walls/${route.wall_id}`, label: "muro" }} />
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 12 }}>
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 12, touchAction: "pan-y" }}
+      >
         <button onClick={() => prevId && navigate(`/routes/${prevId}`)} disabled={!prevId} style={{ padding: "4px 8px", fontSize: 14 }}>&larr;</button>
         <div style={{ textAlign: "center", flex: 1 }}>
           <b style={{textTransform: "capitalize"}}>
@@ -188,7 +222,7 @@ export default function RouteDetail() {
         sends {ascents && `(${ascents.length})`}
       </h2>
 
-      {ascents === null && <p>loading...</p>}
+      {!ascents && <p>loading...</p>}
 
       {ascents && ascents.length > 0 && (
         <ul className="ascent-list">
@@ -282,10 +316,10 @@ export default function RouteDetail() {
           </div>
 
           <button
-            onClick={logAscent}
-            disabled={saving}
+            onClick={() => ascentMutation.mutate()}
+            disabled={ascentMutation.isPending}
           >
-            {saving ? "guardando..." : existingAscent ? "editar send" : "log send"}
+            {ascentMutation.isPending ? "guardando..." : existingAscent ? "editar send" : "log send"}
           </button>
         </>
       )}

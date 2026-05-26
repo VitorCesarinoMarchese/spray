@@ -1,18 +1,20 @@
-import { useState, useEffect } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { supabase } from "../lib/supabase"
+import { keys } from "../lib/queries"
 import Header from "../components/Header"
 
 const GRADES = ["V0", "V1", "V2", "V3", "V4inho", "V4", "V4ão", "V4asso"]
 
 export default function Rankings() {
-  const [rankings, setRankings] = useState(null)
-
-  useEffect(() => {
-    Promise.all([
-      supabase.from("ascents").select("climber_id, route_id, attempts"),
-      supabase.from("routes").select("id, grade"),
-      supabase.from("profiles").select("id, display_name"),
-    ]).then(([ascRes, routeRes, profRes]) => {
+  const { data: rankings } = useQuery({
+    queryKey: keys.rankings(),
+    staleTime: 60_000,
+    queryFn: async () => {
+      const [ascRes, routeRes, profRes] = await Promise.all([
+        supabase.from("ascents").select("climber_id, route_id, attempts"),
+        supabase.from("routes").select("id, grade"),
+        supabase.from("profiles").select("id, display_name"),
+      ])
       const ascents  = ascRes.data  || []
       const routes   = routeRes.data || []
       const profiles = profRes.data  || []
@@ -41,17 +43,15 @@ export default function Rankings() {
         scores[a.climber_id].byGrade[grade] = (scores[a.climber_id].byGrade[grade] || 0) + 1
       }
 
-      const sorted = Object.entries(scores)
+      return Object.entries(scores)
         .map(([id, { pts, byGrade }]) => ({
           name: nameMap[id] || "anon",
           pts,
           byGrade,
         }))
         .sort((a, b) => b.pts - a.pts)
-
-      setRankings(sorted)
-    })
-  }, [])
+    },
+  })
 
   return (
     <div className="page">
@@ -59,7 +59,7 @@ export default function Rankings() {
 
       <h1>rankings</h1>
 
-      {rankings === null && <p>loading...</p>}
+      {!rankings && <p>loading...</p>}
       {rankings?.length === 0 && <p>sem sends.</p>}
 
       <ul className="ranking-list">

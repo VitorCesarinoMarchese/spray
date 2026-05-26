@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useParams, Link } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
 import { supabase } from "../lib/supabase"
+import { keys } from "../lib/queries"
 import { useAuth } from "../components/AuthContext"
 import WallCanvas from "../components/WallCanvas"
 import Header from "../components/Header"
@@ -16,40 +18,43 @@ function gradeLabel(n) {
 export default function WallView() {
   const { id }                  = useParams()
   const { user }                = useAuth()
-  const [wall, setWall]         = useState(null)
-  const [holds, setHolds]       = useState([])
-  const [routes, setRoutes]     = useState(null)
   const [sort, setSort]         = useState("date")
   const [asc, setAsc]           = useState(true)
   const [masked, setMasked]     = useState(true)
 
-  useEffect(() => {
-    supabase
-      .from("walls")
-      .select("*")
-      .eq("id", id)
-      .single()
-      .then(({ data }) => {
-        if (!data) { return }
-        setWall(data)
-      })
+  const { data: wall } = useQuery({
+    queryKey: keys.wall(id),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("walls")
+        .select("*")
+        .eq("id", id)
+        .single()
+      return data
+    },
+  })
 
-    supabase
-      .from("routes")
-      .select("*, profiles(display_name), ascents(count)")
-      .eq("wall_id", id)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setRoutes(data || []))
-  }, [id])
+  const { data: routes } = useQuery({
+    queryKey: keys.wallRoutes(id),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("routes")
+        .select("*, profiles(display_name), ascents(count)")
+        .eq("wall_id", id)
+        .order("created_at", { ascending: false })
+      return data || []
+    },
+  })
 
-  useEffect(() => {
-    if (!wall?.holds_json_url) { return }
-
-    fetch(wall.holds_json_url)
-      .then((r) => r.json())
-      .then(setHolds)
-      .catch(() => {})
-  }, [wall])
+  const { data: holds = [] } = useQuery({
+    queryKey: keys.holds(wall?.holds_json_url),
+    enabled: !!wall?.holds_json_url,
+    staleTime: Infinity,
+    queryFn: async () => {
+      const r = await fetch(wall.holds_json_url)
+      return r.json()
+    },
+  })
 
   const imageUrl = wall?.image_url || ""
   const thumbUrl = wall?.image_thumb_url || ""
@@ -105,7 +110,7 @@ export default function WallView() {
         </div>
       </div>
 
-      {routes === null
+      {!routes
         ? <p>loading...</p>
         : routes.length === 0
           ? <p>sem vias.</p>
