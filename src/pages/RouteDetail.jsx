@@ -139,18 +139,6 @@ export default function RouteDetail() {
     },
   })
 
-  if (!route) {
-    return (
-      <div className="page">
-        <Header back={{ to: "/walls", label: "muros" }} />
-        <p>loading...</p>
-      </div>
-    )
-  }
-
-  const imageUrl = wall?.image_url || ""
-  const thumbUrl = wall?.image_thumb_url || ""
-
   const idx = siblingIds.indexOf(Number(id))
   const prevId = idx >= 0 ? siblingIds[(idx - 1 + siblingIds.length) % siblingIds.length] : null
   const nextId = idx >= 0 ? siblingIds[(idx + 1) % siblingIds.length] : null
@@ -167,6 +155,18 @@ export default function RouteDetail() {
     if (dx > 0 && prevId) navigate(`/routes/${prevId}`)
     if (dx < 0 && nextId) navigate(`/routes/${nextId}`)
   }, [prevId, nextId, navigate])
+
+  if (!route) {
+    return (
+      <div className="page">
+        <Header back={{ to: "/walls", label: "muros" }} />
+        <p>loading...</p>
+      </div>
+    )
+  }
+
+  const imageUrl = wall?.image_url || ""
+  const thumbUrl = wall?.image_thumb_url || ""
 
   return (
     <div className="page">
