@@ -73,7 +73,12 @@ export default function WallCanvas({
   editing = false,
 }) {
   const [thumbLoaded, setThumbLoaded] = useState(false)
-  const [loaded, setLoaded] = useState(false)
+  const [loaded, setLoaded] = useState(() => {
+    if (!imageUrl) return false
+    const img = new Image()
+    img.src = imageUrl
+    return img.complete
+  })
 
   function holdStatus(id) {
     if (masked && maskedIds && !maskedIds.includes(id)) {

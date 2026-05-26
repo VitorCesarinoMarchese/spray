@@ -69,6 +69,7 @@ export default function SetRoute() {
   const { data: wall } = useQuery({
     queryKey: keys.wall(wallId),
     enabled: !!wallId,
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data } = await supabase
         .from("walls")

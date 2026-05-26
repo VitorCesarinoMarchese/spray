@@ -1,16 +1,17 @@
-import { StrictMode } from "react"
+import { StrictMode, lazy, Suspense } from "react"
 import { createRoot } from "react-dom/client"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { AuthProvider, useAuth } from "./components/AuthContext"
-import Login from "./pages/Login"
-import Walls from "./pages/Walls"
-import WallView from "./pages/WallView"
-import SetRoute from "./pages/SetRoute"
-import RouteDetail from "./pages/RouteDetail"
-import Profile from "./pages/Profile"
-import Rankings from "./pages/Rankings"
 import "./style.css"
+
+const Login       = lazy(() => import("./pages/Login"))
+const Walls       = lazy(() => import("./pages/Walls"))
+const WallView    = lazy(() => import("./pages/WallView"))
+const SetRoute    = lazy(() => import("./pages/SetRoute"))
+const RouteDetail = lazy(() => import("./pages/RouteDetail"))
+const Profile     = lazy(() => import("./pages/Profile"))
+const Rankings    = lazy(() => import("./pages/Rankings"))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -42,6 +43,7 @@ createRoot(document.getElementById("root")).render(
     <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <AuthProvider>
+        <Suspense fallback={<div className="page"><p>loading...</p></div>}>
         <Routes>
           <Route path="/login" element={<Login />} />
 
@@ -62,6 +64,7 @@ createRoot(document.getElementById("root")).render(
 
           <Route path="*" element={<Navigate to="/walls/2" />} />
         </Routes>
+        </Suspense>
       </AuthProvider>
     </BrowserRouter>
     </QueryClientProvider>

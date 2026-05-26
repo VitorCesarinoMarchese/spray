@@ -24,6 +24,7 @@ export default function WallView() {
 
   const { data: wall } = useQuery({
     queryKey: keys.wall(id),
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data } = await supabase
         .from("walls")

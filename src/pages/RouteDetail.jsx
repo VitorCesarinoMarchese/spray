@@ -41,6 +41,7 @@ export default function RouteDetail() {
   const { data: wall } = useQuery({
     queryKey: keys.wall(route?.wall_id),
     enabled: !!route?.wall_id,
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data } = await supabase
         .from("walls")
@@ -142,6 +143,28 @@ export default function RouteDetail() {
   const idx = siblingIds.indexOf(Number(id))
   const prevId = idx >= 0 ? siblingIds[(idx - 1 + siblingIds.length) % siblingIds.length] : null
   const nextId = idx >= 0 ? siblingIds[(idx + 1) % siblingIds.length] : null
+
+  useEffect(() => {
+    const prefetch = (routeId) => {
+      if (!routeId) return
+      queryClient.prefetchQuery({
+        queryKey: keys.route(String(routeId)),
+        queryFn: async () => {
+          const { data } = await supabase.from("routes").select("*").eq("id", routeId).single()
+          return data
+        },
+      })
+      queryClient.prefetchQuery({
+        queryKey: keys.ascents(String(routeId)),
+        queryFn: async () => {
+          const { data } = await supabase.from("ascents").select("*, profiles(display_name)").eq("route_id", routeId).order("date", { ascending: false })
+          return data || []
+        },
+      })
+    }
+    prefetch(prevId)
+    prefetch(nextId)
+  }, [prevId, nextId, queryClient])
 
   const touchStart = useRef(null)
   const handleTouchStart = useCallback((e) => {
