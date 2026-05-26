@@ -6,6 +6,7 @@ import Header from "../components/Header"
 export default function Login() {
   const [email, setEmail]       = useState("")
   const [password, setPassword] = useState("")
+  const [name, setName]         = useState("")
   const [error, setError]       = useState(null)
   const [isSignUp, setIsSignUp] = useState(false)
   const navigate = useNavigate()
@@ -14,15 +15,18 @@ export default function Login() {
     e.preventDefault()
     setError(null)
 
-    const action = isSignUp
-      ? supabase.auth.signUp({ email, password })
-      : supabase.auth.signInWithPassword({ email, password })
+    if (isSignUp) {
+      const { data, error: err } = await supabase.auth.signUp({ email, password })
+      if (err) { setError(err.message); return }
 
-    const { error: err } = await action
-
-    if (err) {
-      setError(err.message)
+      await supabase.from("profiles").insert({
+        id: data.user.id,
+        display_name: name.trim(),
+      })
+      navigate("/walls")
     } else {
+      const { error: err } = await supabase.auth.signInWithPassword({ email, password })
+      if (err) { setError(err.message); return }
       navigate("/walls")
     }
   }
@@ -32,6 +36,17 @@ export default function Login() {
       <Header />
 
       <form onSubmit={handleSubmit}>
+        {isSignUp && (
+          <div className="field">
+            <label>nome</label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+          </div>
+        )}
+
         <div className="field">
           <label>e-mail</label>
           <input

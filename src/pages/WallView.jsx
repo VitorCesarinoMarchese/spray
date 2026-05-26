@@ -121,14 +121,11 @@ export default function WallView() {
                       {r.name}
                       {r.profiles?.display_name && (
                         <span style={{ color: "var(--gray)", fontSize: 12 }}>
-                          {" "}por {r.profiles.display_name}
+                          {" "}<br/>por {r.profiles.display_name} em {r.created_at?.slice(0, 10)}
                         </span>
                       )}
                     </span>
 
-                    <span style={{ color: "var(--gray)", fontSize: 12, textAlign: "right" }}>
-                      {r.created_at?.slice(0, 10)}
-                    </span>
                     <span style={{ color: "var(--gray)", fontSize: 12, textAlign: "right" }}>
                       {r.ascents?.[0]?.count > 0 ? `${r.ascents[0].count} sends` : ""}
                     </span>

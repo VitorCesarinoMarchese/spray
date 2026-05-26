@@ -29,6 +29,7 @@ export default function SetRoute() {
   const [campus, setCampus]       = useState(false)
   const [masked, setMasked]       = useState(false)
   const [saving, setSaving]       = useState(false)
+  const [hasProfile, setHasProfile] = useState(true)
 
   useEffect(() => {
     if (isEdit) {
@@ -50,6 +51,18 @@ export default function SetRoute() {
         })
     }
   }, [id, isEdit])
+
+  useEffect(() => {
+    if (!user) return
+    supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", user.id)
+      .single()
+      .then(({ data }) => {
+        setHasProfile(!!data?.display_name)
+      })
+  }, [user])
 
   useEffect(() => {
     if (!wallId) { return }
@@ -137,6 +150,7 @@ export default function SetRoute() {
             masked={masked}
             maskedIds={selectedIds}
             onHoldTap={masked ? undefined : handleHoldTap}
+            editing
           />
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
             <p style={{ fontSize: 11 }}>
@@ -201,10 +215,16 @@ export default function SetRoute() {
         </label>
       </div>
 
+      {!hasProfile && (
+        <p className="error">
+          precisas definir o teu nome no <a href="/profile">perfil</a> antes de criar uma via.
+        </p>
+      )}
+
       <div className="actions">
         <button
           onClick={handleSave}
-          disabled={saving || !name || selectedIds.length === 0}
+          disabled={saving || !name || selectedIds.length === 0 || !hasProfile}
         >
           {saving ? "guardando..." : isEdit ? "atualizar via" : "guardar via"}
         </button>

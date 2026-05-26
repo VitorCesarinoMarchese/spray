@@ -203,13 +203,14 @@ a.btn {
 
 .route-list li a {
   display: grid;
-  grid-template-columns: 1fr 75px 60px 55px;
+  grid-template-columns: 4fr 1fr 1fr;
   gap: 12px;
   align-items: baseline;
 }
 
 .grade {
   color: var(--yellow);
+  font-size: 0.85em;
 }
 
 .wall-canvas-container.interactive {
@@ -226,6 +227,7 @@ a.btn {
   width: 100%;
   height: auto;
 }
+
 
 .wall-canvas svg {
   position: absolute;

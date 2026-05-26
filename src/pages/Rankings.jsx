@@ -9,7 +9,7 @@ export default function Rankings() {
 
   useEffect(() => {
     Promise.all([
-      supabase.from("ascents").select("climber_id, route_id"),
+      supabase.from("ascents").select("climber_id, route_id, attempts"),
       supabase.from("routes").select("id, grade"),
       supabase.from("profiles").select("id, display_name"),
     ]).then(([ascRes, routeRes, profRes]) => {
@@ -33,7 +33,10 @@ export default function Rankings() {
         if (!scores[a.climber_id]) {
           scores[a.climber_id] = { pts: 0, byGrade: {} }
         }
-        const pts = grade * grade
+        let pts = grade * grade;
+        if (a.attempts == 1) {
+          pts = Math.ceil(pts * 1.5);
+        }
         scores[a.climber_id].pts += pts
         scores[a.climber_id].byGrade[grade] = (scores[a.climber_id].byGrade[grade] || 0) + 1
       }

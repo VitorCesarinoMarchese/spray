@@ -52,7 +52,7 @@ createRoot(document.getElementById("root")).render(
             <ProtectedRoute><Profile /></ProtectedRoute>
           } />
 
-          <Route path="*" element={<Navigate to="/walls" />} />
+          <Route path="*" element={<Navigate to="/walls/2" />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
