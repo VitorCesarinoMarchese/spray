@@ -24,8 +24,8 @@ export default function SetRoute() {
   const [holdsMap, setHoldsMap]    = useState({})
   const [name, setName]           = useState("")
   const [grade, setGrade]         = useState(null)
-  const [match, setMatch]         = useState(false)
-  const [volumes, setVolumes]     = useState("any")
+  const [match, setMatch]         = useState(true)
+  const [volumes, setVolumes]     = useState("holds only")
   const [campus, setCampus]       = useState(false)
   const [masked, setMasked]       = useState(false)
 
@@ -208,7 +208,7 @@ export default function SetRoute() {
       </div>
 
       <div className="field">
-        <label>match</label>
+        <label>pode juntar</label>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, textTransform: "none", letterSpacing: 0, color: "var(--fg)" }}>
           <input type="checkbox" checked={match} onChange={(e) => setMatch(e.target.checked)} style={{ width: "auto" }} />
           duas mãos na mesma agarra

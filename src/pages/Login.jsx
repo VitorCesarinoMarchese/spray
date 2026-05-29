@@ -9,26 +9,46 @@ export default function Login() {
   const [name, setName]         = useState("")
   const [error, setError]       = useState(null)
   const [isSignUp, setIsSignUp] = useState(false)
+  const [checkEmail, setCheckEmail] = useState(false)
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
+    setLoading(true)
 
     if (isSignUp) {
-      const { data, error: err } = await supabase.auth.signUp({ email, password })
-      if (err) { setError(err.message); return }
-
-      await supabase.from("profiles").insert({
-        id: data.user.id,
-        display_name: name.trim(),
+      const { error: err } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { display_name: name.trim() } },
       })
-      navigate("/walls")
+      setLoading(false)
+      if (err) { setError(err.message); return }
+      setCheckEmail(true)
+      return
     } else {
       const { error: err } = await supabase.auth.signInWithPassword({ email, password })
+      setLoading(false)
       if (err) { setError(err.message); return }
       navigate("/walls")
     }
+  }
+
+  if (checkEmail) {
+    return (
+      <div className="page">
+        <Header />
+        <h1>verifica o teu e-mail</h1>
+        <p style={{ marginTop: 16 }}>
+          enviamos um link de confirmacao para <strong>{email}</strong>.
+        </p>
+        <p style={{ marginTop: 8, fontSize: 13, color: "var(--gray)" }}>
+          clica no link no e-mail para ativar a tua conta.
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -70,8 +90,8 @@ export default function Login() {
         {error && <p className="error">{error}</p>}
 
         <div className="actions">
-          <button type="submit">
-            {isSignUp ? "criar conta" : "entrar"}
+          <button type="submit" disabled={loading}>
+            {loading ? "a carregar…" : isSignUp ? "criar conta" : "entrar"}
           </button>
         </div>
       </form>

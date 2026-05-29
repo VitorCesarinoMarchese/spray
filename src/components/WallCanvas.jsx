@@ -4,7 +4,7 @@ const HOLD_COLORS = {
   hand:   { fill: "rgba(0, 120, 255, 0.7)",  stroke: "#0080FF" },
   start:  { fill: "rgba(0, 255, 65, 0.7)",   stroke: "#00FF41" },
   finish: { fill: "rgba(224, 0, 0, 0.7)",   stroke: "#e00" },
-  feet:   { fill: "rgba(255, 200, 0, 0.7)", stroke: "#fc0" },
+  feet:   { fill: "rgba(255, 0, 255, 0.7)", stroke: "#f0f" },
 }
 
 function HoldPolygon({ hold, status, holdType, onTap, interactive }) {

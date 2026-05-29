@@ -18,8 +18,8 @@ function gradeLabel(n) {
 export default function WallView() {
   const { id }                  = useParams()
   const { user }                = useAuth()
-  const [sort, setSort]         = useState("date")
-  const [asc, setAsc]           = useState(true)
+  const [sort, setSort]         = useState(() => localStorage.getItem("routeSort") || "date")
+  const [asc, setAsc]           = useState(() => localStorage.getItem("routeAsc") !== "false")
   const [masked, setMasked]     = useState(true)
 
   const { data: wall } = useQuery({
@@ -46,6 +46,21 @@ export default function WallView() {
       return data || []
     },
   })
+
+  const { data: sentRouteIds } = useQuery({
+    queryKey: keys.myWallAscents(id, user?.id),
+    enabled: !!user && !!routes && routes.length > 0,
+    queryFn: async () => {
+      const ids = routes.map(r => r.id)
+      const { data, error } = await supabase
+        .from("ascents")
+        .select("route_id")
+        .eq("climber_id", user.id)
+        .in("route_id", ids)
+      return (data || []).map(a => a.route_id)
+    },
+  })
+  const sentSet = new Set(sentRouteIds || [])
 
   const { data: holds = [] } = useQuery({
     queryKey: keys.holds(wall?.holds_json_url),
@@ -96,15 +111,18 @@ export default function WallView() {
           <button
             className="theme-toggle"
             onClick={() => {
-              if (sort === "date") { setSort("grade"); setAsc(false) }
-              else { setSort("date"); setAsc(false) }
+              const next = sort === "date" ? "grade" : "date"
+              setSort(next); setAsc(false)
+              localStorage.setItem("routeSort", next)
+              localStorage.setItem("routeAsc", "false")
+              void 0
             }}
           >
             sort: {sort}
           </button>
           <button
             className="theme-toggle"
-            onClick={() => setAsc(a => !a)}
+            onClick={() => { setAsc(a => { const v = !a; localStorage.setItem("routeAsc", v); return v }) }}
           >
             {asc ? "↑" : "↓"}
           </button>
@@ -125,6 +143,7 @@ export default function WallView() {
                   <Link to={`/routes/${r.id}`}>
                     <span>
                       {r.name}
+
                       {r.profiles?.display_name && (
                         <span style={{ color: "var(--gray)", fontSize: 12 }}>
                           {" "}<br/>por {r.profiles.display_name} em {r.created_at?.slice(0, 10)}
@@ -133,6 +152,9 @@ export default function WallView() {
                     </span>
 
                     <span style={{ color: "var(--gray)", fontSize: 12, textAlign: "right" }}>
+                      {sentSet.has(r.id) && (
+                        <span style={{ color: "#0c0", fontSize: 15, marginRight: 4 }}>✔</span>
+                      )}
                       {r.ascents?.[0]?.count > 0 ? `${r.ascents[0].count} sends` : ""}
                     </span>
                     <span className="grade" style={{ textAlign: "right" }}>{gradeLabel(r.grade)}</span>

@@ -135,6 +135,9 @@ export default function RouteDetail() {
       queryClient.invalidateQueries({ queryKey: keys.ascents(id) })
       if (route?.wall_id) {
         queryClient.invalidateQueries({ queryKey: keys.wallRoutes(String(route.wall_id)) })
+        if (user) {
+          queryClient.invalidateQueries({ queryKey: keys.myWallAscents(String(route.wall_id), user.id) })
+        }
       }
       queryClient.invalidateQueries({ queryKey: keys.rankings() })
     },
@@ -211,7 +214,7 @@ export default function RouteDetail() {
         <button onClick={() => nextId && navigate(`/routes/${nextId}`)} disabled={!nextId} style={{ padding: "4px 8px", fontSize: 14 }}>&rarr;</button>
       </div>
       <p style={{ paddingBottom: 12, fontSize: 12, color: "var(--gray)" }}>
-        {route.match && <span>match · </span>}
+        <span>{route.match ? "pode juntar" : "não pode juntar"} · </span>
         {route.campus && <span>campus · </span>}
         <span>volumes: {route.volumes === "any" ? "qualquer" : route.volumes === "holds only" ? "só das agarras" : route.volumes || "qualquer"}</span>
       </p>
