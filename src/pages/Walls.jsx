@@ -60,6 +60,7 @@ export default function Walls() {
 
       <p style={{ marginTop: 32, fontSize: 13, color: "var(--gray)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <a href="https://github.com/tobyshooters/spray">github</a>
+        <a href="https://chat.whatsapp.com/Gog94NtrP0nCHUzKefMyHv?mode=gi_t">whatsapp</a>
         <button className="theme-toggle" onClick={cycleTheme}>{THEME_LABELS[theme]} {theme}</button>
       </p>
     </div>

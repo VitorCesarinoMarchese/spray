@@ -78,7 +78,7 @@ export default function WallView() {
 
   return (
     <div className="page">
-      <Header back={{ to: "/walls", label: "muros" }} />
+      <Header />
 
       <h1>{wall?.name || "muro"}</h1>
 
