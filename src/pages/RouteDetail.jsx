@@ -264,7 +264,7 @@ export default function RouteDetail() {
         </>
       )}
 
-      <p style={{ marginTop: 16, color: route.description ? "var(--fg)" : "var(--gray)" }}>
+      <p style={{ marginTop: 24, color: route.description ? "var(--fg)" : "var(--gray)" }}>
         {route.description || "Sem descrição."}
       </p>
       <p style={{ marginTop: 8, fontSize: 12, color: "var(--gray)" }}>
