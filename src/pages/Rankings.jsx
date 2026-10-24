@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { supabase } from "../lib/supabase"
-import { keys } from "../lib/queries"
+import { keys, borderQuery } from "../lib/queries"
 import { computeClimberScores } from "../lib/points"
 import Header from "../components/Header"
 import Avatar from "../components/Avatar"
@@ -11,16 +11,12 @@ const GRADES = ["V0", "V1", "V2", "V3", "V4inho", "V4", "V4ão", "V4asso"]
 export default function Rankings() {
   const [tab, setTab] = useState("climber")
 
-  const { data: borders } = useQuery({
-    queryKey: keys.borders(),
-    staleTime: Infinity,
-    queryFn: async () => {
-      const { data } = await supabase.from("borders").select("id, file")
-      const map = {}
-      for (const b of (data || [])) map[b.id] = b.file
-      return map
-    },
-  })
+  const { data: borders } = useQuery(borderQuery)
+
+  const borderFiles = {}
+  for (const b of (borders || [])) {
+    borderFiles[b.id] = b.file
+  }
 
   const { data: rankings } = useQuery({
     queryKey: keys.rankings(),
@@ -132,7 +128,7 @@ export default function Rankings() {
       <ul className="ranking-list">
         {(data || []).map((r, i) => (
           <li key={i} style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            <Avatar src={r.avatar} name={r.name} borderFile={borders?.[r.borderId]} borderFile2={borders?.[r.borderId2]} size={72} />
+            <Avatar src={r.avatar} name={r.name} borderFile={borderFiles[r.borderId]} borderFile2={borderFiles[r.borderId2]} size={72} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span>{i + 1}. {r.name}</span>
