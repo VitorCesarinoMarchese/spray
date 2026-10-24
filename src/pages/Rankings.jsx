@@ -10,6 +10,7 @@ const GRADES = ["V0", "V1", "V2", "V3", "V4inho", "V4", "V4ão", "V4asso"]
 
 export default function Rankings() {
   const [tab, setTab] = useState("climber")
+  const [picked, setPicked] = useState()
 
   const { data: borders } = useQuery(borderQuery)
 
@@ -18,18 +19,40 @@ export default function Rankings() {
     borderFiles[b.id] = b.file
   }
 
+  const { data: walls } = useQuery({
+    queryKey: keys.walls(),
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("walls")
+        .select("id, name, created_at")
+        .order("created_at", { ascending: false })
+      return data || []
+    },
+  })
+
+  // a wall is a season; default to the newest, "all" for every season
+  const wallId = picked ?? walls?.[0]?.id
+
   const { data: rankings } = useQuery({
-    queryKey: keys.rankings(),
+    queryKey: [...keys.rankings(), wallId],
+    enabled: !!wallId,
     staleTime: 60_000,
     queryFn: async () => {
+      let routeQuery = supabase.from("routes").select("id, grade")
+      if (wallId !== "all") {
+        routeQuery = routeQuery.eq("wall_id", wallId)
+      }
+
       const [ascRes, routeRes, profRes] = await Promise.all([
         supabase.from("ascents").select("climber_id, route_id, attempts"),
-        supabase.from("routes").select("id, grade"),
+        routeQuery,
         supabase.from("profiles").select("id, display_name, avatar_url, border_id, border_id_2"),
       ])
-      const ascents  = ascRes.data  || []
       const routes   = routeRes.data || []
       const profiles = profRes.data  || []
+
+      const routeIds = new Set(routes.map((r) => r.id))
+      const ascents  = (ascRes.data || []).filter((a) => routeIds.has(a.route_id))
 
       const profileMap = {}
       for (const p of profiles) {
@@ -52,12 +75,18 @@ export default function Rankings() {
   })
 
   const { data: setterRankings } = useQuery({
-    queryKey: keys.setterRankings(),
+    queryKey: [...keys.setterRankings(), wallId],
+    enabled: !!wallId,
     staleTime: 60_000,
     queryFn: async () => {
+      let routeQuery = supabase.from("routes").select("id, setter_id, grade")
+      if (wallId !== "all") {
+        routeQuery = routeQuery.eq("wall_id", wallId)
+      }
+
       const [ascRes, routeRes, profRes] = await Promise.all([
         supabase.from("ascents").select("route_id"),
-        supabase.from("routes").select("id, setter_id, grade"),
+        routeQuery,
         supabase.from("profiles").select("id, display_name, avatar_url, border_id, border_id_2"),
       ])
       const ascents  = ascRes.data  || []
@@ -106,6 +135,20 @@ export default function Rankings() {
       <Header back={{ to: "/walls", label: "muros" }} />
 
       <h1>rankings</h1>
+
+      <select
+        value={wallId ?? ""}
+        onChange={(e) => {
+          const v = e.target.value
+          setPicked(v === "all" ? v : Number(v))
+        }}
+        style={{ marginBottom: 12 }}
+      >
+        {(walls || []).map((w) => (
+          <option key={w.id} value={w.id}>{w.name}</option>
+        ))}
+        <option value="all">todas as temporadas</option>
+      </select>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         <button
